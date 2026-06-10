@@ -1,7 +1,5 @@
 # github-contribution-log
 My Open Source Contribution Logs
-# github-contribution-log
-My Open Source Contribution Logs
 
 # Contribution 1: Splitting existing transaction causes UI glitches as splits disappear and reappear
 
