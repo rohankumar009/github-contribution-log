@@ -6,7 +6,7 @@ My Open Source Contribution Logs
 **Contribution Number:** 1
 **Student:** Rohan Kumar
 **Issue:** https://github.com/actualbudget/actual/issues/5217
-**Status:** Phase I Complete
+**Status:** Phase II Complete
 
 ---
 
@@ -39,27 +39,28 @@ After entering the first split amount and pressing Enter, the split rows visuall
 ## Reproduction Process
 
 ### Environment Setup
-*To be completed during Phase II.*
+Reproduced on the live demo instance at https://demo.actualbudget.org — no local setup required.
 
 ### Steps to Reproduce
-1. Create a transaction as a non-split transaction
-2. Edit the transaction's category to convert it into a split transaction
-3. Enter the first split amount and press Enter
-4. Observe: UI glitches as split rows flash/disappear, and a $0.00 split remains
-
-> Note: Reproducible on the live demo at https://demo.actualbudget.org — no local setup required to confirm the bug.
+1. Go to https://demo.actualbudget.org
+2. Navigate to the Checking account in the left sidebar
+3. Click on any existing transaction to expand it
+4. Click the **Category** field and select **"Split transaction"** from the dropdown
+5. Enter an amount in the first split row and press **Enter**
+6. Observe: split rows flash, disappear, and reappear (UI glitch)
+7. After distributing all amounts, observe: a leftover **$0.00** split entry remains at the bottom
 
 ### Reproduction Evidence
-- **Commit showing reproduction:** *To be added*
-- **Screenshots/logs:** See screen recording in the original issue
-- **My findings:** *To be added during Phase II*
+- **Branch:** https://github.com/rohankumar009/actual/tree/fix/split-transaction-glitch
+- **Screenshots/logs:** See screen recording in the original issue — bug confirmed reproduced on demo instance
+- **My findings:** The $0.00 phantom split entry consistently appears after converting an existing transaction to a split. The glitch does not occur when creating a split transaction from scratch, indicating the bug is specific to the conversion flow.
 
 ---
 
 ## Solution Approach
 
 ### Analysis
-*To be completed during Phase II after tracing the splitting logic in the codebase.*
+*To be completed during Phase III after tracing the splitting logic in the codebase.*
 
 ### Proposed Solution
 *To be determined.*
@@ -68,19 +69,20 @@ After entering the first split amount and pressing Enter, the split rows visuall
 
 **Understand:** When an existing transaction is converted to a split, something in the state update cycle causes the UI to re-render incorrectly, and a $0.00 row is left behind.
 
-**Match:** *To be determined — will look for similar state-handling patterns in the transaction form components.*
+**Match:** Will look for how split transactions are initialized from scratch vs. converted from existing transactions — the difference in those two code paths is likely where the bug lives.
 
 **Plan:**
-1. Reproduce locally and identify the React component(s) responsible for rendering split rows
-2. Trace what triggers the re-render glitch (likely a state update ordering issue)
-3. Fix the root cause and clean up the $0.00 split row logic
-4. Update or add tests
+1. Find the React component(s) responsible for rendering split rows (likely in `packages/desktop-client/src/components/transactions/`)
+2. Compare the code path for creating a new split vs. converting an existing transaction
+3. Identify what causes the extra $0.00 row to be inserted
+4. Fix the state update ordering to prevent the phantom row and the re-render glitch
+5. Update or add tests to cover this case
 
-**Implement:** *Links to be added as work progresses*
+**Implement:** https://github.com/rohankumar009/actual/tree/fix/split-transaction-glitch
 
 **Review:** Follow Actual Budget's CONTRIBUTING.md guidelines
 
-**Evaluate:** Manually test the fix against the reproduction steps; confirm no regression on new split transactions
+**Evaluate:** Manually test the fix against the reproduction steps above; confirm no regression on new split transactions
 
 ---
 
@@ -95,7 +97,7 @@ After entering the first split amount and pressing Enter, the split rows visuall
 - [ ] Full split flow on an existing transaction behaves the same as on a new transaction
 
 ### Manual Testing
-*To be completed during Phase II.*
+- Confirmed bug reproduction on https://demo.actualbudget.org — $0.00 entry appears after splitting an existing transaction
 
 ---
 
