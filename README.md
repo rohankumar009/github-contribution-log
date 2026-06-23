@@ -6,7 +6,7 @@ My Open Source Contribution Logs
 **Contribution Number:** 1
 **Student:** Rohan Kumar
 **Issue:** https://github.com/actualbudget/actual/issues/5217
-**Status:** Phase II Complete
+**Status:** Phase III Complete
 
 ---
 
@@ -30,9 +30,9 @@ Splitting an existing transaction should behave the same as creating a new split
 After entering the first split amount and pressing Enter, the split rows visually disappear and reappear (glitch). Once done, a $0.00 split transaction is left behind.
 
 ### Affected Components
-- Transaction editing / split transaction flow
-- Likely the UI state management around transaction form updates
-- React components handling split row rendering
+- `packages/desktop-client/src/components/transactions/TransactionsTable.jsx` — main transaction table and split row rendering
+- `packages/desktop-client/src/components/accounts/Account.tsx` — manages split open/close state via `useLayoutEffect`
+- `packages/loot-core/src/shared/transactions.ts` — core split transaction logic (parent/child relationships, `is_parent`, `is_child` flags)
 
 ---
 
@@ -60,23 +60,28 @@ Reproduced on the live demo instance at https://demo.actualbudget.org — no loc
 ## Solution Approach
 
 ### Analysis
-*To be completed during Phase III after tracing the splitting logic in the codebase.*
+The bug likely lives in how the split conversion flow initializes child rows. When a new split is created from scratch, the rows are initialized cleanly. When an existing transaction is converted, the state update that adds child rows may be firing an extra render cycle — likely because the parent transaction data is being updated at the same time the child rows are being generated. This causes the UI flicker. The $0.00 phantom row suggests an extra empty child entry is being inserted during initialization that is never cleaned up.
+
+Based on research into the codebase, split transactions use `is_parent` and `is_child` flags with a `sort_order` to track parent-child relationships. The conversion path likely triggers a re-render before the child rows are fully initialized, causing the visual glitch.
 
 ### Proposed Solution
-*To be determined.*
+Find the point in `TransactionsTable.jsx` (or the related hooks) where an existing transaction is converted to a split, and ensure:
+1. The child row initialization happens atomically — no intermediate render with an empty $0.00 row
+2. The extra phantom row is not being inserted during the conversion
 
 ### Implementation Plan
 
-**Understand:** When an existing transaction is converted to a split, something in the state update cycle causes the UI to re-render incorrectly, and a $0.00 row is left behind.
+**Understand:** When an existing transaction is converted to a split, the state update cycle triggers an extra render that shows a $0.00 row and causes a visual flicker.
 
-**Match:** Will look for how split transactions are initialized from scratch vs. converted from existing transactions — the difference in those two code paths is likely where the bug lives.
+**Match:** The `Account.tsx` component uses `useLayoutEffect` to dispatch actions that close splits for parent transactions when `prependTransactions` changes — a similar synchronous-before-paint approach may be needed for the conversion flow.
 
 **Plan:**
-1. Find the React component(s) responsible for rendering split rows (likely in `packages/desktop-client/src/components/transactions/`)
-2. Compare the code path for creating a new split vs. converting an existing transaction
-3. Identify what causes the extra $0.00 row to be inserted
-4. Fix the state update ordering to prevent the phantom row and the re-render glitch
-5. Update or add tests to cover this case
+1. Clone the fork locally and set up the dev environment following the contributing guide
+2. Open `packages/desktop-client/src/components/transactions/TransactionsTable.jsx` and find the split conversion handler
+3. Compare the new-split creation path vs. the existing-transaction conversion path
+4. Identify where the extra $0.00 child row is being inserted
+5. Fix the state update to prevent the phantom row and eliminate the re-render flicker
+6. Add a test case in `TransactionsTable.test.tsx` to cover this conversion scenario
 
 **Implement:** https://github.com/rohankumar009/actual/tree/fix/split-transaction-glitch
 
@@ -92,23 +97,32 @@ Reproduced on the live demo instance at https://demo.actualbudget.org — no loc
 - [ ] Splitting an existing transaction does not produce a $0.00 split entry
 - [ ] Split rows render correctly without flickering after conversion
 - [ ] New split transactions (from scratch) are unaffected
+- [ ] `is_parent` / `is_child` flags are set correctly after conversion
 
 ### Integration Tests
 - [ ] Full split flow on an existing transaction behaves the same as on a new transaction
 
 ### Manual Testing
 - Confirmed bug reproduction on https://demo.actualbudget.org — $0.00 entry appears after splitting an existing transaction
+- Will manually verify fix against all steps in the reproduction process above
 
 ---
 
 ## Implementation Notes
 
-*To be filled in weekly as work progresses.*
+### Week 1 Progress
+Completed environment research and codebase analysis. Identified the key files involved in the split transaction flow:
+- **`TransactionsTable.jsx`** — handles split row rendering and the conversion UI
+- **`Account.tsx`** — manages split open/close state synchronously using `useLayoutEffect`
+- **`loot-core/src/shared/transactions.ts`** — core logic for parent/child split relationships
+
+The conversion flow differs from the new-split flow in how child rows are initialized, which is the likely root cause of both the UI flicker and the phantom $0.00 entry. Next step is setting up the local dev environment and stepping through the conversion code path directly.
 
 ### Code Changes
-- **Files modified:** *TBD*
-- **Key commits:** *TBD*
-- **Approach decisions:** *TBD*
+- **Files to modify:** `packages/desktop-client/src/components/transactions/TransactionsTable.jsx`
+- **Possibly also:** `packages/loot-core/src/shared/transactions.ts` if the phantom row is inserted at the data layer
+- **Key commits:** *To be added as implementation progresses*
+- **Approach decisions:** Will compare the new-split vs. conversion code paths side by side to isolate the exact divergence
 
 ---
 
@@ -131,3 +145,5 @@ Reproduced on the live demo instance at https://demo.actualbudget.org — no loc
 - [Issue #5217](https://github.com/actualbudget/actual/issues/5217)
 - [Actual Budget contributing guide](https://github.com/actualbudget/actual/blob/master/CONTRIBUTING.md)
 - [Actual Budget demo instance](https://demo.actualbudget.org)
+- [Related issue #3465 — Split Transactions UI quirks](https://github.com/actualbudget/actual/issues/3465)
+- [PR #2834 — Reapply rules to split transactions](https://github.com/actualbudget/actual/pull/2834)
